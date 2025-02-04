@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Circular Text Generator</title>
+    <style>
+        body { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            font-family: Arial, sans-serif; 
+        }
+        #textCanvas { 
+            border: 1px solid white; 
+            margin-top: 20px; 
+            background-color: black;
+            color: white;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <form id="textForm">
+            <input type="text" id="phraseInput" placeholder="Enter your phrase" required>
+            <div>
+                <label for="textColor">Text Color</label>
+                <input type="color" id="textColor" value="#00FF00">
+            </div>
+            <div>
+                <label for="circleCount">Circles: <span id="circleCountDisplay">1</span></label>
+                <input type="range" id="circleCount" min="1" max="5" value="1">
+            </div>
+            <div>
+                <label for="rotationSpeed">Rotation Speed: <span id="speedDisplay">0</span></label>
+                <input type="range" id="rotationSpeed" min="0" max="10" value="0">
+            </div>
+            <div>
+                <label for="startRadius">Start Radius: <span id="radiusDisplay">50</span></label>
+                <input type="range" id="startRadius" min="20" max="300" value="50">
+            </div>
+            <button type="submit">Generate</button>
+        </form>
+    </div>
+    <canvas id="textCanvas" width="400" height="400"></canvas>
+
+    <script>
+        let animationFrameId;
+
+        document.getElementById('circleCount').addEventListener('input', function() {
+            document.getElementById('circleCountDisplay').textContent = this.value;
+        });
+
+        document.getElementById('rotationSpeed').addEventListener('input', function() {
+            document.getElementById('speedDisplay').textContent = this.value;
+        });
+
+        document.getElementById('startRadius').addEventListener('input', function() {
+            document.getElementById('radiusDisplay').textContent = this.value;
+        });
+
+        document.getElementById('textForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Cancel any existing animation
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+
+            const originalPhrase = document.getElementById('phraseInput').value;
+            const circleCount = parseInt(document.getElementById('circleCount').value);
+            const rotationSpeed = parseInt(document.getElementById('rotationSpeed').value);
+            const baseTextColor = document.getElementById('textColor').value;
+            const canvas = document.getElementById('textCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // Setup circle parameters
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            // const baseRadius = 50;
+            const baseRadius = parseInt(document.getElementById('startRadius').value);
+
+            // Set font
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            let rotation = 0;
+
+            function hexToRgb(hex) {
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                return [r, g, b];
+            }
+
+
+            function animate() {
+                // Clear previous drawing
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Draw the SVG shapes
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                const svg_a = new Path2D("M41.17,3.73c-4.05-2.37-8.76-3.73-13.79-3.73s-9.74,1.36-13.79,3.73c2.31,7.47,3.56,15.41,3.56,23.65s-1.25,16.17-3.56,23.65c4.05,2.37,8.76,3.73,13.79,3.73s9.74-1.36,13.79-3.73c-2.31-7.47-3.56-15.41-3.56-23.65s1.25-16.17,3.56-23.65Z");
+                const svg_b = new Path2D("M0,27.38c0,7.89,3.35,15,8.69,20,1.78-6.37,2.75-13.07,2.75-20s-.97-13.64-2.75-20C3.35,12.38,0,19.48,0,27.38Z");
+                const svg_c = new Path2D("M46.07,47.38c5.35-5,8.69-12.11,8.69-20s-3.35-15-8.69-20c-1.78,6.37-2.75,13.07-2.75,20s.97,13.64,2.75,20Z");
+                ctx.fill(svg_a);
+                ctx.fill(svg_b);
+                ctx.fill(svg_c);
+                ctx.restore();
+
+                // Draw text on multiple concentric circles
+                for (let circleLevel = 0; circleLevel < circleCount; circleLevel++) {
+                    // Adjust radius for each circle level
+                    const radius = baseRadius + (circleLevel * 30);
+                    
+                    // Calculate total circumference
+                    const circumference = 2 * Math.PI * radius;
+                    
+                    // Measure phrase width
+                    const phraseWidth = ctx.measureText(originalPhrase).width;
+                    const letterWidth = ctx.measureText('A').width;
+                    
+                    // Calculate how many full phrases and extra letters fit
+                    const phraseCount = Math.floor(circumference / (phraseWidth * 1.2)); // 20% gap
+                    const extraLettersNeeded = Math.ceil((circumference % (phraseWidth * 1.2)) / letterWidth);
+                    
+                    // Determine rotation direction (alternating)
+                    const direction = circleLevel % 2 === 0 ? 1 : -1;
+                    const currentRotation = rotation * direction;
+
+                    // Create faded color for this ring
+                    const [r, g, b] = hexToRgb(baseTextColor);
+                    const fadeIntensity = 1; // 1 - (circleLevel * 0.2);
+                    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${fadeIntensity})`;
+
+                    // Draw each phrase with a small gap
+                    let letterIndex = 0;
+                    for (let i = 0; i < phraseCount; i++) {
+                        const phraseParts = originalPhrase.split('');
+                        phraseParts.forEach((letter) => {
+                            const angle = (letterIndex / (phraseCount * originalPhrase.length + extraLettersNeeded)) * 2 * Math.PI + currentRotation;
+                            
+                            ctx.save();
+                            ctx.translate(centerX, centerY);
+                            ctx.rotate(angle - Math.PI / 2);
+                            ctx.fillText(letter, 0, -radius);
+                            ctx.restore();
+                            
+                            letterIndex++;
+                        });
+                    }
+                    
+                    // Add extra letters to complete the circle if needed
+                    const extraPhrase = originalPhrase.slice(0, extraLettersNeeded);
+                    extraPhrase.split('').forEach((letter) => {
+                        const angle = (letterIndex / (phraseCount * originalPhrase.length + extraLettersNeeded)) * 2 * Math.PI + currentRotation;
+                        
+                        ctx.save();
+                        ctx.translate(centerX, centerY);
+                        ctx.rotate(angle - Math.PI / 2);
+                        ctx.fillText(letter, 0, -radius);
+                        ctx.restore();
+                        
+                        letterIndex++;
+                    });
+                }
+
+                // Update rotation
+                rotation += 0.01 * rotationSpeed;
+
+                // Continue animation
+                animationFrameId = requestAnimationFrame(animate);
+            }
+
+            // Start animation
+            animate();
+        });
+    </script>
+</body>
+</html>
+
+
+
